@@ -15,6 +15,7 @@ namespace SpeechClientSample
     using System.Threading.Tasks;
     using CognitiveServicesAuthorization;
     using Microsoft.Bing.Speech;
+    using System.Linq;
 
     /// <summary>
     /// This sample program shows how to use <see cref="SpeechClient"/> APIs to perform speech recognition.
@@ -41,6 +42,8 @@ namespace SpeechClientSample
         /// </summary>
         private readonly CancellationTokenSource cts = new CancellationTokenSource();
 
+        public string ResultFile { get; private set; }
+
         /// <summary>
         /// The entry point to this sample program. It validates the input arguments
         /// and sends a speech recognition request using the Microsoft.Bing.Speech APIs.
@@ -49,7 +52,7 @@ namespace SpeechClientSample
         public static void Main(string[] args)
         {
             // Validate the input arguments count.
-            if (args.Length < 4)
+            if (args.Length < 5)
             {
                 DisplayHelp("Invalid number of arguments.");
                 return;
@@ -70,7 +73,7 @@ namespace SpeechClientSample
 
             // Send a speech recognition request for the audio.
             var p = new Program();
-            p.Run(args[0], args[1], char.ToLower(args[2][0]) == 'l' ? LongDictationUrl : ShortPhraseUrl, args[3]).Wait();
+            p.Run(args[0], args[1], char.ToLower(args[2][0]) == 'l' ? LongDictationUrl : ShortPhraseUrl, args[3], args[4]).Wait();
         }
 
         /// <summary>
@@ -108,13 +111,19 @@ namespace SpeechClientSample
 
             // Print the recognition status.
             Console.WriteLine("***** Phrase Recognition Status = [{0}] ***", response.RecognitionStatus);
+            Console.WriteLine($"***** Phrase Recognition Status = [{response.RecognitionStatus}] ***");
+
             if (response.Phrases != null)
             {
                 foreach (var result in response.Phrases)
                 {
                     // Print the recognition phrase display text.
-                    Console.WriteLine("{0} (Confidence:{1})", result.DisplayText, result.Confidence);
+                    var resultText = $"{result.DisplayText} (Confidence:{result.Confidence})";
+                    Console.WriteLine(resultText);
+                    File.AppendAllText(ResultFile, resultText + Environment.NewLine);
                 }
+                File.AppendAllText(ResultFile, "========================");
+                File.AppendAllText(ResultFile, Environment.NewLine);
             }
 
             Console.WriteLine();
@@ -131,10 +140,13 @@ namespace SpeechClientSample
         /// <returns>
         /// A task
         /// </returns>
-        public async Task Run(string audioFile, string locale, Uri serviceUrl, string subscriptionKey)
+        public async Task Run(string audioFile, string locale, Uri serviceUrl, string subscriptionKey, string resultFile)
         {
             // create the preferences object
             var preferences = new Preferences(locale, serviceUrl, new CognitiveServicesAuthorizationProvider(subscriptionKey));
+
+            ResultFile = resultFile;
+            File.CreateText(ResultFile);
 
             // Create a a speech client
             using (var speechClient = new SpeechClient(preferences))
@@ -171,6 +183,7 @@ namespace SpeechClientSample
             Console.WriteLine("Arg[1]: Specify the audio locale.");
             Console.WriteLine("Arg[2]: Recognition mode [Short|Long].");
             Console.WriteLine("Arg[3]: Specify the subscription key to access the Speech Recognition Service.");
+            Console.WriteLine("Arg[4]: Specify the result file.");
             Console.WriteLine();
             Console.WriteLine("Sign up at https://www.microsoft.com/cognitive-services/ with a client/subscription id to get a client secret key.");
         }
